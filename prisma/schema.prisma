@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  phone     String   @unique
+  email     String   @unique
+  address   String?
+  role      Role     @relation(fields: [roleId], references: [id])
+  roleId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[]
+}
+
+model Product {
+  id           Int             @id @default(autoincrement())
+  name         String
+  price        Decimal
+  image        String?
+  description  String?
+  stock        Int
+  category     Category        @relation(fields: [categoryId], references: [id])
+  categoryId   Int
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  options      ProductOption[]
+  orderDetails OrderDetail[]
+}
+
+model ProductOption {
+  id              Int     @id @default(autoincrement())
+  product         Product @relation(fields: [productId], references: [id])
+  productId       Int
+  name            String
+  value           String
+  additionalPrice Decimal @default(0.0)
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Order {
+  id         Int           @id @default(autoincrement())
+  user       User          @relation(fields: [userId], references: [id])
+  userId     Int           @unique
+  totalPrice Decimal
+  status     String        @default("pending")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  details    OrderDetail[]
+  payment    Payment?
+  delivery   Delivery?
+}
+
+model OrderDetail {
+  id        Int     @id @default(autoincrement())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  quantity  Int
+  price     Decimal
+  options   String?
+}
+
+model Discount {
+  id           Int      @id @default(autoincrement())
+  title        String
+  type         String
+  applyTo      String?
+  code         String   @unique
+  value        Decimal
+  discountRule Json
+  startDate    DateTime
+  endDate      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  order         Order    @relation(fields: [orderId], references: [id])
+  orderId       Int      @unique
+  paymentMethod String
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Delivery {
+  id           Int       @id @default(autoincrement())
+  order        Order     @relation(fields: [orderId], references: [id])
+  orderId      Int       @unique
+  address      String
+  status       String    @default("preparing")
+  deliveryTime DateTime?
+}

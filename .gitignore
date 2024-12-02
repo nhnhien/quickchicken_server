@@ -1,0 +1,4 @@
+# compiled output
+/node_modules
+# dotenv environment variable files
+.env
