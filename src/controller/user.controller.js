@@ -87,6 +87,7 @@ const updateUser = async (req, res) => {
   }
 
   try {
+    
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {

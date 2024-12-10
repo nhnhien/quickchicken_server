@@ -2,11 +2,12 @@ import prisma from '../prismaClient.js';
 import bcrypt from 'bcrypt';
 import { validationResult } from 'express-validator';
 import { generateAccessToken } from '../util/jwt.js';
+import { logger } from '../util/logger.js';
 
 const signIn = async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ message: 'email and password are required' });
+    return res.status(400).json({ message: 'email or password are required' });
   }
   try {
     const user = await prisma.user.findUnique({
@@ -18,13 +19,13 @@ const signIn = async (req, res) => {
       },
     });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'email and password invalid' });
+      return res.status(404).json({ success: false, message: 'email hoặc password không đúng' });
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: 'email and password invalid' });
+      return res.status(401).json({ success: false, message: 'email hoặc password không đúng' });
     }
-    const token = generateAccessToken({ id: user.id, role: user.roleId });
+    const token = generateAccessToken({ id: user.id, role: user.roleId, name: user.username });
     res.status(200).json({
       message: 'Sign in successful',
       success: true,
@@ -49,16 +50,16 @@ const signUp = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const { username, phone, email, password } = req.body;
+    logger.info('req', req);
+    const { phone, username, email, password } = req.body;
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ username }, { phone }, { email }],
+        OR: [{ username: username }, { phone: phone }, { email: email }],
       },
     });
     if (existingUser) {
       return res.status(400).json({ message: 'Username, phone, or email already in use' });
     }
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
