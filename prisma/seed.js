@@ -2,7 +2,10 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function initData() {
-  const roles = [{ name: 'owner' }, { name: 'customer' }];
+  const roles = [
+    { id: 1, name: 'customer' },
+    { id: 2, name: 'owner' },
+  ];
 
   const upsertPromises = roles.map((role) => {
     return prisma.role.upsert({
