@@ -25,7 +25,7 @@ const signIn = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'email hoặc password không đúng' });
     }
-    const token = generateAccessToken({ id: user.id, role: user.roleId, name: user.username });
+    const token = generateAccessToken({ id: user.id, role: user.role_id, name: user.username });
     res.status(200).json({
       message: 'Sign in successful',
       success: true,
@@ -67,7 +67,7 @@ const signUp = async (req, res) => {
         phone,
         email,
         password: hashedPassword,
-        roleId: 1,
+        role_id: 1,
       },
       include: {
         role: true,

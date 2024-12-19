@@ -29,6 +29,13 @@ const getProducts = async (req, res) => {
       orderBy: {
         created_at: 'desc',
       },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
     if (limit) {
       const totalProducts = await prisma.product.count({ where });
@@ -152,7 +159,6 @@ const editProduct = async (req, res) => {
     if (req.file) {
       if (product.image) {
         const oldImagePublicId = `lotteria/${product.image.split('/').pop().split('.')[0]}`;
-        logger.info(oldImagePublicId);
         await deleteFile(oldImagePublicId);
       }
       const imageUrl = await uploadFile(req.file);
@@ -195,7 +201,8 @@ const deleteProduct = async (req, res) => {
         message: 'Sản phẩm không tồn tại',
       });
     }
-
+    const oldImagePublicId = `lotteria/${existingProduct.image.split('/').pop().split('.')[0]}`;
+    await deleteFile(oldImagePublicId);
     await prisma.product.delete({
       where: { id: parseInt(id) },
     });

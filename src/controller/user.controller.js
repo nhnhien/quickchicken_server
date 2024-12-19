@@ -51,7 +51,7 @@ const createUser = async (req, res) => {
         email,
         phone,
         password: hashedPassword,
-        roleId,
+        role_id: roleId,
       },
     });
     return res.status(201).json({
@@ -62,7 +62,7 @@ const createUser = async (req, res) => {
         username: user.username,
         email: user.email,
         phone: user.phone,
-        role: user.roleId,
+        role_id: user.role_id,
       },
     });
   } catch (error) {
@@ -87,7 +87,6 @@ const updateUser = async (req, res) => {
   }
 
   try {
-    
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(id) },
       data: {

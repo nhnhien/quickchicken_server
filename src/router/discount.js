@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyAdmin } from '../middleware/auth.middleware.js';
+import { verifyAdmin, verifyToken } from '../middleware/auth.middleware.js';
 import {
   applyDiscount,
   createDiscount,
@@ -18,6 +18,6 @@ router.get('/discount-id/:id', getDiscountById);
 router.post('/', verifyAdmin, discountValidator, handleValidationErrors, createDiscount);
 router.patch('/:id', verifyAdmin, updateDiscount);
 router.delete('/:id', verifyAdmin, deleteDiscount);
-router.post('/apply', applyDiscount);
+router.post('/apply', verifyToken, applyDiscount);
 
 export default router;
