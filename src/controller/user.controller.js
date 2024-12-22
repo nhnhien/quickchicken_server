@@ -66,7 +66,6 @@ const createUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to create user',
@@ -109,7 +108,6 @@ const updateUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to update user',
@@ -138,7 +136,6 @@ const deleteUser = async (req, res) => {
       message: `User with id ${id} deleted successfully`,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to delete user',

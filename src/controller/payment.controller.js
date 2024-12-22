@@ -15,7 +15,6 @@ const updatePaymentStatus = async (paymentId, status, txnRef, amount, response_c
     });
     return updatedPayment;
   } catch (error) {
-    console.error('Failed to update payment status:', error);
     throw new Error('Failed to update payment status');
   }
 };
@@ -29,15 +28,14 @@ const processPayment = async (req, res) => {
     });
 
     if (!payment || payment.status !== 'pending') {
-      console.error('Invalid payment status or payment not found:', { paymentId });
       return res.status(400).json({
         success: false,
         message: 'Invalid payment status or payment not found',
       });
     }
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date();
+    const expiredate = new Date(now.getTime() + 10 * 60 * 1000);
 
     const paymentUrl = vnpay.buildPaymentUrl({
       vnp_Amount: totalPrice,
@@ -48,10 +46,8 @@ const processPayment = async (req, res) => {
       vnp_ReturnUrl: returnUrl || process.env.VNPAY_RETURN_URL,
       vnp_Locale: VnpLocale.VN,
       vnp_CreateDate: dateFormat(new Date()),
-      vnp_ExpireDate: dateFormat(tomorrow),
+      vnp_ExpireDate: dateFormat(expiredate),
     });
-
-    console.info('Payment URL generated:', { paymentId, paymentUrl });
 
     return res.status(200).json({
       success: true,
@@ -59,7 +55,6 @@ const processPayment = async (req, res) => {
       paymentUrl,
     });
   } catch (error) {
-    console.error('Failed to process payment:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to process payment',
@@ -77,7 +72,6 @@ const repayment = async (req, res) => {
     });
 
     if (!payment) {
-      console.error('Payment not found:', { paymentId });
       return res.status(400).json({
         success: false,
         message: 'Payment not found',
@@ -85,7 +79,6 @@ const repayment = async (req, res) => {
     }
 
     if (payment.status === 'completed') {
-      console.warn('Payment already completed:', { paymentId });
       return res.status(400).json({
         success: false,
         message: 'Payment already completed',
@@ -95,8 +88,8 @@ const repayment = async (req, res) => {
     if (payment.status === 'failed' || payment.status === 'cancelled') {
       await updatePaymentStatus(payment.id, 'pending');
 
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const now = new Date();
+      const expiredate = new Date(now.getTime() + 10 * 60 * 1000);
 
       const paymentUrl = vnpay.buildPaymentUrl({
         vnp_Amount: totalPrice,
@@ -108,10 +101,8 @@ const repayment = async (req, res) => {
         vnp_ReturnUrl: returnUrl || process.env.VNPAY_RETURN_URL,
         vnp_Locale: VnpLocale.VN,
         vnp_CreateDate: dateFormat(new Date()),
-        vnp_ExpireDate: dateFormat(tomorrow),
+        vnp_ExpireDate: dateFormat(expiredate),
       });
-
-      console.info('Payment URL generated for repayment:', { paymentId, paymentUrl });
 
       return res.status(200).json({
         success: true,
@@ -119,14 +110,12 @@ const repayment = async (req, res) => {
         paymentUrl,
       });
     } else {
-      console.error('Invalid payment status for repayment:', { paymentId, status: payment.status });
       return res.status(400).json({
         success: false,
         message: 'Invalid payment status for repayment',
       });
     }
   } catch (error) {
-    console.error('Failed to process repayment:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to process repayment',
@@ -143,24 +132,23 @@ const handleVnpayCallback = async (req, res) => {
     });
 
     if (!payment) {
-      console.error('Payment not found:', { vnp_TxnRef });
+      co;
       return res.status(400).json({ success: false, message: 'Payment not found' });
     }
     if (vnp_ResponseCode === '00') {
       await updatePaymentStatus(payment.id, 'completed', vnp_TxnRef, vnp_Amount, vnp_ResponseCode);
-      console.info('Payment completed:', { paymentId: payment.id });
+
       return res.status(200).json({ success: true, message: 'Payment successful', paymentId: payment.id });
     } else if (vnp_ResponseCode === '24') {
       await updatePaymentStatus(payment.id, 'cancelled', vnp_TxnRef, vnp_Amount, vnp_ResponseCode);
-      console.warn('Payment cancelled:', { paymentId: payment.id });
+
       return res.status(200).json({ success: false, message: 'Payment cancelled', paymentId: payment.id });
     } else {
       await updatePaymentStatus(payment.id, 'failed', vnp_TxnRef, vnp_Amount, vnp_ResponseCode);
-      console.warn('Payment failed:', { paymentId: payment.id });
+
       return res.status(200).json({ success: false, message: 'Payment failed', paymentId: payment.id });
     }
   } catch (error) {
-    console.error('Error handling VNPay callback:', error);
     return res.status(500).json({
       success: false,
       message: 'Error handling VNPay callback',

@@ -20,7 +20,6 @@ const getOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch orders',
@@ -40,7 +39,6 @@ const getOrderById = async (req, res) => {
         user: true,
       },
     });
-
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -54,7 +52,6 @@ const getOrderById = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch order',
@@ -63,17 +60,61 @@ const getOrderById = async (req, res) => {
   }
 };
 
-const createOrder = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
+const getOrdersByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: `User with ID ${userId} not found`,
+      });
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { user_id: parseInt(userId) },
+      include: {
+        orderDetails: {
+          include: {
+            product: true,
+          },
+        },
+        user: true,
+        payments: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (orders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No orders found for user with ID ${userId}`,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Orders fetched successfully',
+      orders,
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: 'Validation failed',
-      errors: errors.array(),
+      message: 'Failed to fetch orders',
+      error: error.message,
     });
   }
+};
 
-  const { userId, orderDetails, totalPrice } = req.body;
+const createOrder = async (req, res) => {
+  const { userId, orderDetails, totalPrice, paymentMethod, note } = req.body;
 
   try {
     const user = await prisma.user.findUnique({
@@ -86,7 +127,6 @@ const createOrder = async (req, res) => {
         message: `User with ID ${userId} not found`,
       });
     }
-
     const productIds = orderDetails.map((detail) => detail.product_id);
     const products = await prisma.product.findMany({
       where: {
@@ -101,46 +141,53 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const order = await prisma.order.create({
-      data: {
-        user_id: userId,
-        total_price: totalPrice,
-        status: 'pending',
-        orderDetails: {
-          create: orderDetails.map((detail) => ({
-            product_id: detail.product_id,
-            quantity: detail.quantity,
-            price: detail.price,
-            options: detail.options || null,
-          })),
+    const result = await prisma.$transaction(async (prisma) => {
+      const order = await prisma.order.create({
+        data: {
+          user_id: userId,
+          total_price: totalPrice,
+          status: 'pending',
+          note,
+          orderDetails: {
+            create: orderDetails.map((detail) => ({
+              product_id: detail.product_id,
+              quantity: detail.quantity,
+              price: detail.price,
+              options: detail.options || null,
+            })),
+          },
         },
-      },
-      include: {
-        orderDetails: true,
-      },
-    });
-    const payment = await prisma.payment.create({
-      data: {
-        order_id: order.id,
-        payment_method: 'vnpay',
-        status: 'pending',
-      },
+        include: {
+          orderDetails: true,
+        },
+      });
+
+      const payment = await prisma.payment.create({
+        data: {
+          order_id: order.id,
+          payment_method: paymentMethod,
+          amount: totalPrice,
+        },
+      });
+
+      return { order, payment };
     });
 
     return res.status(201).json({
       success: true,
       message: 'Order created successfully',
       order: {
-        id: order.id,
-        user_id: order.user_id,
-        total_price: order.total_price,
-        status: order.status,
-        orderDetails: order.orderDetails,
-        payment_id: payment.id,
+        id: result.order.id,
+        user_id: result.order.user_id,
+        total_price: result.order.total_price,
+        status: result.order.status,
+        order_detail: result.order.orderDetails,
+        order_note: result.order.note,
+        payment_method: result.payment.payment_method,
+        payment_id: result.payment.id,
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to create order',
@@ -189,7 +236,6 @@ const updateOrderStatus = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to update order status',
@@ -198,7 +244,6 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// Xóa đơn hàng
 const deleteOrder = async (req, res) => {
   const { id } = req.params;
 
@@ -223,7 +268,6 @@ const deleteOrder = async (req, res) => {
       message: `Order with ID ${id} deleted successfully`,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to delete order',
@@ -232,4 +276,4 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-export { getOrders, getOrderById, createOrder, updateOrderStatus, deleteOrder };
+export { getOrders, getOrderById, createOrder, updateOrderStatus, deleteOrder, getOrdersByUser };
