@@ -18,6 +18,6 @@ router.get('/discount-id/:id', getDiscountById);
 router.post('/', verifyAdmin, discountValidator, handleValidationErrors, createDiscount);
 router.patch('/:id', verifyAdmin, updateDiscount);
 router.delete('/:id', verifyAdmin, deleteDiscount);
-router.post('/apply', verifyToken, applyDiscount);
+router.post('/apply-discount', verifyToken, applyDiscount);
 
 export default router;
