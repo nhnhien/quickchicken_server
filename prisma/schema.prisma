@@ -14,7 +14,7 @@ model User {
   email         String         @unique
   password      String
   address       String?
-  role_id       Int            
+  role_id       Int
   created_at    DateTime       @default(now())
   updated_at    DateTime       @default(now()) @updatedAt
   role          Role           @relation(fields: [role_id], references: [id])
@@ -50,6 +50,8 @@ model Option {
   value            String
   additional_price Float?          @default(0.0)
   productOptions   ProductOption[]
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @default(now())@updatedAt
 }
 
 model ProductOption {
@@ -70,11 +72,19 @@ model Category {
   products   Product[]
 }
 
+enum OrderStatus {
+  pending
+  preparing
+  shipped
+  delivered
+  cancelled
+}
+
 model Order {
   id           Int           @id @default(autoincrement())
   user_id      Int
   total_price  Float
-  status       String        @default("pending")
+  status       OrderStatus   @default(pending)
   created_at   DateTime      @default(now())
   updated_at   DateTime      @updatedAt
   user         User          @relation(fields: [user_id], references: [id])
@@ -129,21 +139,48 @@ model UserDiscount {
   user        User     @relation(fields: [user_id], references: [id])
 }
 
+
+enum PaymentStatus {
+  pending
+  completed
+  cancelled
+  failed
+  refunded
+}
 model Payment {
-  id             Int      @id @default(autoincrement())
-  order_id       Int
-  payment_method String
-  status         String   @default("pending")
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-  order          Order    @relation(fields: [order_id], references: [id])
+  id                Int       @id @default(autoincrement())
+  order_id          Int
+  payment_method    String
+  status            PaymentStatus @default(pending)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  txn_ref           String      @default("N/A")    // Mã giao dịch VNPay
+  amount            Int         @default(0)   // Số tiền thanh toán
+  bank_code         String?   // Mã ngân hàng
+  transaction_no    String?   // Mã giao dịch của VNPay
+  card_type         String?   // Loại thẻ (ATM, Credit, v.v.)
+  order_info        String?   // Thông tin đơn hàng
+  pay_date          DateTime? // Thời gian thanh toán
+  response_code     String?   // Mã phản hồi của VNPay
+  tmn_code          String?   // Mã TMN của Merchant
+  transaction_status String?  // Trạng thái giao dịch
+  secure_hash       String?   // Secure Hash dùng để kiểm tra tính hợp lệ của dữ liệu
+  order             Order     @relation(fields: [order_id], references: [id])
+}
+
+enum DeliveryStatus {
+  delivering
+  delivered
+  cancelled
 }
 
 model Delivery {
-  id            Int       @id @default(autoincrement())
+  id            Int            @id @default(autoincrement())
   order_id      Int
   address       String
-  status        String    @default("preparing")
+  status        DeliveryStatus @default(delivering)
   delivery_time DateTime?
-  order         Order     @relation(fields: [order_id], references: [id])
+  order         Order          @relation(fields: [order_id], references: [id])
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
 }
