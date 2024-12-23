@@ -146,27 +146,64 @@ const deleteDiscount = async (req, res) => {
 };
 
 const applyDiscount = async (req, res) => {
-  //   const { discountCode, orderId } = req.body;
-  //   try {
-  //     const discount = await prisma.discount.findUnique({
-  //       where: { code: discountCode },
-  //     });
-  //     if (!discount) {
-  //       return res.status(404).json({ message: 'Discount not found' });
-  //     }
-  //     const order = await prisma.order.update({
-  //       where: { id: orderId },
-  //       data: {
-  //         total_price: {
-  //           decrement: discount.value,
-  //         },
-  //       },
-  //     });
-  //     return res.json({ message: 'Discount applied successfully', order });
-  //   } catch (error) {
-  //     console.error('Error applying discount:', error);
-  //     return res.status(500).json({ message: 'Error applying discount' });
-  //   }
+  const { discountCode, productIds } = req.body;
+
+  try {
+    const discount = await prisma.discount.findFirst({
+      where: {
+        code: discountCode,
+        start_date: { lte: new Date() },
+        end_date: { gte: new Date() },
+      },
+      include: {
+        productDiscounts: true,
+      },
+    });
+
+    if (!discount) {
+      return res.status(400).json({ message: 'Invalid or expired discount code' });
+    }
+    const validProductDiscounts = discount.productDiscounts.filter((productDiscount) =>
+      productIds.includes(productDiscount.product_id)
+    );
+
+    if (validProductDiscounts.length === 0) {
+      return res.status(400).json({ message: 'No valid products for this discount' });
+    }
+
+    const discountedProducts = await Promise.all(
+      validProductDiscounts.map(async (productDiscount) => {
+        const productDetails = await prisma.product.findUnique({
+          where: { id: productDiscount.product_id },
+        });
+
+        if (!productDetails) {
+          throw new Error(`Product with ID ${productDiscount.product_id} not found`);
+        }
+
+        let finalPrice = productDetails.price;
+        if (discount.type === 'percent') {
+          finalPrice -= (finalPrice * discount.value) / 100;
+        } else if (discount.type === 'fixed') {
+          finalPrice -= discount.value;
+        }
+        return {
+          product_id: productDiscount.product_id,
+          original_price: productDetails.price,
+          discounted_price: finalPrice,
+          total_price: finalPrice,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      message: 'Discount applied successfully',
+      discountedProducts,
+    });
+  } catch (error) {
+    console.error('Error applying discount:', error);
+    return res.status(500).json({ message: 'Error applying discount' });
+  }
 };
 
 export { getDiscounts, getDiscountById, createDiscount, updateDiscount, deleteDiscount, applyDiscount };

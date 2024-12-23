@@ -52,7 +52,7 @@ const getCategoryById = async (req, res) => {
   }
 };
 const createCategory = async (req, res) => {
-  const { name } = req.body;
+  const { name, description } = req.body;
 
   try {
     const errors = validationResult(req);
@@ -65,6 +65,7 @@ const createCategory = async (req, res) => {
     const newCategory = await prisma.category.create({
       data: {
         name,
+        description,
       },
     });
 
@@ -85,7 +86,7 @@ const createCategory = async (req, res) => {
 
 const updateCategory = async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, description } = req.body;
 
   try {
     const errors = validationResult(req);
@@ -108,7 +109,7 @@ const updateCategory = async (req, res) => {
 
     const updatedCategory = await prisma.category.update({
       where: { id: parseInt(id) },
-      data: { name },
+      data: { name, description },
     });
 
     res.status(200).json({
@@ -139,13 +140,16 @@ const deleteCategory = async (req, res) => {
         message: 'Category not found',
       });
     }
+    await prisma.product.deleteMany({
+      where: { category_id: parseInt(id) },
+    });
     await prisma.category.delete({
       where: { id: parseInt(id) },
     });
 
     res.status(200).json({
       success: true,
-      message: 'Category deleted successfully!',
+      message: 'Category and associated products deleted successfully!',
     });
   } catch (error) {
     console.error('Error deleting category: ', error.message);
