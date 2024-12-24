@@ -40,54 +40,64 @@ const getDiscountById = async (req, res) => {
 };
 
 const createDiscount = async (req, res) => {
-  const { title, type, apply_to, code, value, start_date, end_date, product_ids, user_ids } = req.body;
+  const { title, type, discount_code, value, start_date, end_date, product_ids, user_ids } = req.body;
+
   try {
+    if (product_ids && product_ids.length > 0) {
+      const validProducts = await prisma.product.findMany({
+        where: {
+          id: { in: product_ids },
+        },
+      });
+
+      if (validProducts.length !== product_ids.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Some product IDs are invalid',
+        });
+      }
+    }
+
+    if (user_ids && user_ids.length > 0) {
+      const validUsers = await prisma.user.findMany({
+        where: {
+          id: { in: user_ids },
+        },
+      });
+
+      if (validUsers.length !== user_ids.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Some user IDs are invalid',
+        });
+      }
+    }
+
     const discount = await prisma.discount.create({
       data: {
         title,
         type,
-        apply_to,
-        code,
+        discount_code,
         value,
         start_date: new Date(start_date),
         end_date: new Date(end_date),
       },
     });
-    if (apply_to === 'specific_product' && product_ids && product_ids.length > 0) {
+
+    if (product_ids && product_ids.length > 0) {
       const productDiscounts = product_ids.map((product_id) => ({
         discount_id: discount.id,
         product_id,
       }));
-
       await prisma.productDiscount.createMany({
         data: productDiscounts,
       });
     }
-    if (apply_to === 'specific_customer' && user_ids && user_ids.length > 0) {
+
+    if (user_ids && user_ids.length > 0) {
       const userDiscounts = user_ids.map((user_id) => ({
         discount_id: discount.id,
         user_id,
-      }));
-
-      await prisma.userDiscount.createMany({
-        data: userDiscounts,
-      });
-    }
-    if (apply_to === 'all_product') {
-      const products = await prisma.product.findMany();
-      const productDiscounts = products.map((product) => ({
-        discount_id: discount.id,
-        product_id: product.id,
-      }));
-      await prisma.productDiscount.createMany({
-        data: productDiscounts,
-      });
-    }
-    if (apply_to === 'all_customers') {
-      const users = await prisma.user.findMany();
-      const userDiscounts = users.map((user) => ({
-        discount_id: discount.id,
-        user_id: user.id,
       }));
       await prisma.userDiscount.createMany({
         data: userDiscounts,
@@ -96,13 +106,13 @@ const createDiscount = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Create discount successfully',
+      message: 'Discount created successfully',
       data: discount,
     });
   } catch (error) {
     logger.error('Error creating discount:', error);
     return res.status(500).json({
-      success: true,
+      success: false,
       message: 'Error creating discount',
       error: error.message,
     });
@@ -111,21 +121,47 @@ const createDiscount = async (req, res) => {
 
 const updateDiscount = async (req, res) => {
   const { id } = req.params;
-  const { title, type, apply_to, code, value, start_date, end_date } = req.body;
+  const { title, type, code, value, start_date, end_date, product_ids, user_ids } = req.body;
   try {
     const discount = await prisma.discount.update({
       where: { id: parseInt(id) },
       data: {
         title,
         type,
-        apply_to,
         code,
         value,
         start_date: new Date(start_date),
         end_date: new Date(end_date),
       },
     });
-    return res.json(discount);
+
+    if (product_ids) {
+      await prisma.productDiscount.deleteMany({ where: { discount_id: discount.id } });
+      const productDiscounts = product_ids.map((product_id) => ({
+        discount_id: discount.id,
+        product_id,
+      }));
+      await prisma.productDiscount.createMany({
+        data: productDiscounts,
+      });
+    }
+
+    if (user_ids) {
+      await prisma.userDiscount.deleteMany({ where: { discount_id: discount.id } });
+      const userDiscounts = user_ids.map((user_id) => ({
+        discount_id: discount.id,
+        user_id,
+      }));
+      await prisma.userDiscount.createMany({
+        data: userDiscounts,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Discount updated successfully',
+      data: discount,
+    });
   } catch (error) {
     console.error('Error updating discount:', error);
     return res.status(500).json({ message: 'Error updating discount' });
@@ -135,10 +171,13 @@ const updateDiscount = async (req, res) => {
 const deleteDiscount = async (req, res) => {
   const { id } = req.params;
   try {
-    const discount = await prisma.discount.delete({
+    await prisma.productDiscount.deleteMany({ where: { discount_id: parseInt(id) } });
+    await prisma.userDiscount.deleteMany({ where: { discount_id: parseInt(id) } });
+    await prisma.discount.delete({
       where: { id: parseInt(id) },
     });
-    return res.json({ message: 'Discount deleted successfully', discount });
+
+    return res.json({ message: 'Discount deleted successfully' });
   } catch (error) {
     console.error('Error deleting discount:', error);
     return res.status(500).json({ message: 'Error deleting discount' });
@@ -146,63 +185,87 @@ const deleteDiscount = async (req, res) => {
 };
 
 const applyDiscount = async (req, res) => {
-  const { discountCode, productIds } = req.body;
+  const { discount_code, cartItems, userId } = req.body;
 
   try {
     const discount = await prisma.discount.findFirst({
       where: {
-        code: discountCode,
+        discount_code: discount_code,
         start_date: { lte: new Date() },
         end_date: { gte: new Date() },
       },
       include: {
         productDiscounts: true,
+        userDiscounts: true,
       },
     });
 
     if (!discount) {
-      return res.status(400).json({ message: 'Invalid or expired discount code' });
+      return res.status(200).json({
+        success: true,
+        message: 'Invalid or expired discount code. Returning cart with original prices.',
+        data: cartItems,
+      });
     }
+
     const validProductDiscounts = discount.productDiscounts.filter((productDiscount) =>
-      productIds.includes(productDiscount.product_id)
+      cartItems.some((item) => item.id === productDiscount.product_id)
     );
+    const validUserDiscounts = discount.userDiscounts.filter((userDiscount) => userDiscount.user_id === userId);
 
-    if (validProductDiscounts.length === 0) {
-      return res.status(400).json({ message: 'No valid products for this discount' });
+    if (validProductDiscounts.length === 0 || validUserDiscounts.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No valid products or user for this discount. Returning cart with original prices.',
+        data: cartItems,
+      });
     }
 
-    const discountedProducts = await Promise.all(
-      validProductDiscounts.map(async (productDiscount) => {
-        const productDetails = await prisma.product.findUnique({
-          where: { id: productDiscount.product_id },
-        });
+    const updatedCartItems = cartItems.map((item) => {
+      const validProductDiscount = validProductDiscounts.find(
+        (productDiscount) => productDiscount.product_id === item.id
+      );
 
-        if (!productDetails) {
-          throw new Error(`Product with ID ${productDiscount.product_id} not found`);
-        }
+      let discountedPrice = item.price;
 
-        let finalPrice = productDetails.price;
+      if (validProductDiscount) {
         if (discount.type === 'percent') {
-          finalPrice -= (finalPrice * discount.value) / 100;
+          discountedPrice -= (discountedPrice * discount.value) / 100;
         } else if (discount.type === 'fixed') {
-          finalPrice -= discount.value;
+          discountedPrice -= discount.value;
         }
-        return {
-          product_id: productDiscount.product_id,
-          original_price: productDetails.price,
-          discounted_price: finalPrice,
-          total_price: finalPrice,
-        };
-      })
-    );
+      }
+
+      return {
+        ...item,
+        discount_code,
+        discount_value: discount.value,
+        discount_type: discount.type,
+        discounted_price: discountedPrice,
+        line_price: discountedPrice * item.quantity,
+      };
+    });
+
+    const total_price = updatedCartItems.reduce((acc, item) => acc + item.line_price, 0);
 
     return res.status(200).json({
+      success: true,
       message: 'Discount applied successfully',
-      discountedProducts,
+      data: {
+        items: updatedCartItems,
+        discounted_total_price: total_price,
+        discount_code,
+        discount_value: discount.value,
+        discount_type: discount.type,
+      },
     });
   } catch (error) {
     console.error('Error applying discount:', error);
-    return res.status(500).json({ message: 'Error applying discount' });
+    return res.status(500).json({
+      success: false,
+      message: 'Error applying discount',
+      error: error.message,
+    });
   }
 };
 

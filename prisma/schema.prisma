@@ -106,14 +106,14 @@ model OrderDetail {
   product    Product @relation(fields: [product_id], references: [id])
 }
 
+
 model Discount {
   id               Int               @id @default(autoincrement())
   title            String
-  type             String // percent/fixed
-  apply_to         String?
-  code             String            @unique
+  type             String
+  discount_code             String            @unique
   value            Float
-  start_date       DateTime
+  start_date       DateTime          @default(now())
   end_date         DateTime
   created_at       DateTime          @default(now())
   updated_at       DateTime          @updatedAt

@@ -5,7 +5,7 @@ const discountValidator = [
 
   body('type').isIn(['percent', 'fixed']).withMessage("Type must be 'percent' or 'fixed'."),
 
-  body('code')
+  body('discount_code')
     .isString()
     .withMessage('Code must be a string.')
     .notEmpty()
