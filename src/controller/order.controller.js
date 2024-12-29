@@ -5,13 +5,31 @@ const getOrders = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       include: {
-        orderDetails: true,
-        user: true,
+        orderDetails: {
+          include: {
+            product: true,
+          },
+        },
+        user: {
+          select: {
+            username: true,
+            phone: true,
+            email: true,
+          },
+        },
         payments: {
           select: {
             status: true,
           },
         },
+        deliveries: {
+          select: {
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: 'desc',
       },
     });
     return res.status(200).json({
@@ -35,8 +53,23 @@ const getOrderById = async (req, res) => {
     const order = await prisma.order.findUnique({
       where: { id: parseInt(id) },
       include: {
-        orderDetails: true,
+        orderDetails: {
+          include: {
+            product: true,
+          },
+        },
         user: true,
+        payments: {
+          select: {
+            status: true,
+          },
+        },
+        deliveries: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
       },
     });
     if (!order) {
@@ -83,9 +116,22 @@ const getOrdersByUser = async (req, res) => {
             product: true,
           },
         },
-        user: true,
+        user: {
+          select: {
+            username: true,
+            phone: true,
+            email: true,
+          },
+        },
         payments: {
           select: {
+            status: true,
+          },
+        },
+        deliveries: {
+          select: {
+            id: true,
+            address: true,
             status: true,
           },
         },
@@ -114,7 +160,7 @@ const getOrdersByUser = async (req, res) => {
 };
 
 const createOrder = async (req, res) => {
-  const { userId, orderDetails, totalPrice, paymentMethod, note } = req.body;
+  const { userId, orderDetails, totalPrice, paymentMethod, note, shippingAddress } = req.body;
 
   try {
     const user = await prisma.user.findUnique({
@@ -170,7 +216,15 @@ const createOrder = async (req, res) => {
         },
       });
 
-      return { order, payment };
+      const delivery = await prisma.delivery.create({
+        data: {
+          order_id: order.id,
+          address: shippingAddress,
+          status: 'pending',
+        },
+      });
+
+      return { order, payment, delivery };
     });
 
     return res.status(201).json({
@@ -185,6 +239,8 @@ const createOrder = async (req, res) => {
         order_note: result.order.note,
         payment_method: result.payment.payment_method,
         payment_id: result.payment.id,
+        delivery_status: result.delivery.status,
+        delivery_id: result.delivery.id,
       },
     });
   } catch (error) {

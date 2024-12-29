@@ -4,7 +4,7 @@ const getDeliveries = async (req, res) => {
   try {
     const deliveries = await prisma.delivery.findMany({
       include: {
-        order: true, // Liên kết với bảng Order để lấy thông tin đơn hàng
+        order: true,
       },
     });
     return res.status(200).json({
@@ -13,7 +13,6 @@ const getDeliveries = async (req, res) => {
       deliveries,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch deliveries',
@@ -29,7 +28,7 @@ const getDeliveryById = async (req, res) => {
     const delivery = await prisma.delivery.findUnique({
       where: { id: parseInt(id) },
       include: {
-        order: true, // Liên kết với bảng Order để lấy thông tin đơn hàng
+        order: true,
       },
     });
 
@@ -46,7 +45,6 @@ const getDeliveryById = async (req, res) => {
       delivery,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch delivery',
@@ -59,13 +57,12 @@ const createDelivery = async (req, res) => {
   const { orderId, address, status, deliveryTime } = req.body;
 
   try {
-    // Tạo một delivery mới
     const delivery = await prisma.delivery.create({
       data: {
         order_id: orderId,
         address: address,
         status: status,
-        delivery_time: deliveryTime || null, // Nếu không có thì sẽ là null
+        delivery_time: deliveryTime || null,
       },
     });
 
@@ -75,7 +72,6 @@ const createDelivery = async (req, res) => {
       delivery,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to create delivery',
@@ -99,13 +95,12 @@ const updateDelivery = async (req, res) => {
         message: `Delivery with ID ${id} not found`,
       });
     }
-
     const updatedDelivery = await prisma.delivery.update({
       where: { id: parseInt(id) },
       data: {
-        address: address || delivery.address,
-        status: status || delivery.status,
-        delivery_time: deliveryTime || delivery.delivery_time,
+        address: address !== undefined ? address : delivery.address,
+        status: status !== undefined ? status : delivery.status,
+        delivery_time: deliveryTime !== undefined ? deliveryTime : delivery.delivery_time,
       },
     });
 
@@ -115,7 +110,6 @@ const updateDelivery = async (req, res) => {
       delivery: updatedDelivery,
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to update delivery',
@@ -148,7 +142,6 @@ const deleteDelivery = async (req, res) => {
       message: 'Delivery deleted successfully',
     });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Failed to delete delivery',

@@ -171,6 +171,7 @@ model Payment {
 }
 
 enum DeliveryStatus {
+  pending
   delivering
   delivered
   cancelled
@@ -180,7 +181,7 @@ model Delivery {
   id            Int            @id @default(autoincrement())
   order_id      Int
   address       String
-  status        DeliveryStatus @default(delivering)
+  status        DeliveryStatus @default(pending)
   delivery_time DateTime?
   order         Order          @relation(fields: [order_id], references: [id])
   created_at    DateTime       @default(now())

@@ -5,8 +5,16 @@ const getDiscounts = async (req, res) => {
   try {
     const discounts = await prisma.discount.findMany({
       include: {
-        productDiscounts: true,
-        userDiscounts: true,
+        productDiscounts: {
+          include: {
+            product: true,
+          },
+        },
+        userDiscounts: {
+          include: {
+            user: true,
+          },
+        },
       },
     });
     return res.json({
@@ -204,7 +212,9 @@ const applyDiscount = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: 'Invalid or expired discount code. Returning cart with original prices.',
-        data: cartItems,
+        data: {
+          items: cartItems,
+        },
       });
     }
 
@@ -217,7 +227,9 @@ const applyDiscount = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: 'No valid products or user for this discount. Returning cart with original prices.',
-        data: cartItems,
+        data: {
+          items: cartItems,
+        },
       });
     }
 

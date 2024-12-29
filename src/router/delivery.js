@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/:id', getDeliveryById);
 router.get('/', getDeliveries);
 router.post('/', validateDelivery, createDelivery);
-router.put('/:id', validateDelivery, updateDelivery);
+router.patch('/:id', validateDelivery, updateDelivery);
 router.delete('/:id', deleteDelivery);
 
 export default router;
