@@ -110,7 +110,7 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
   const { name, price, description, stock, category_id } = req.body;
-  const options = JSON.parse(req.body.options);
+  const options = JSON.parse(req.body.options || '[]');
 
   try {
     if (!req.file) {
