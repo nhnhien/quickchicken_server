@@ -177,7 +177,7 @@ const createProduct = async (req, res) => {
 const editProduct = async (req, res) => {
   const { id } = req.params;
   const { name, price, description, stock, category_id } = req.body;
-  const options = JSON.parse(req.body.options);
+  const options = JSON.parse(req.body.options || '[]');
 
   try {
     const product = await prisma.product.findUnique({
@@ -195,7 +195,7 @@ const editProduct = async (req, res) => {
     const updateData = {
       name: name || product.name,
       price: price ? parseFloat(price) : product.price,
-      description,
+      description: description || product.description,
       stock: stock ? parseInt(stock) : product.stock,
       category_id: category_id ? parseInt(category_id) : product.category_id,
     };
@@ -215,29 +215,32 @@ const editProduct = async (req, res) => {
       updateData.image = imageUrl;
     }
 
-    if (options) {
+    if (options.length > 0) {
       const existingOptions = product.productOptions.map((po) => po.option);
-      const newOptions = options.map((option) => ({
-        name: option.name,
-        value: option.value,
-        additional_price: option.additional_price || 0,
-      }));
 
-      const promises = newOptions.map(async (newOption) => {
+      const currentOptionIds = [];
+
+      for (const newOption of options) {
         const existingOption = existingOptions.find(
           (opt) => opt.name === newOption.name && opt.value === newOption.value
         );
 
         if (existingOption) {
+          // Nếu `additional_price` thay đổi -> cập nhật
           if (existingOption.additional_price !== newOption.additional_price) {
             await prisma.option.update({
               where: { id: existingOption.id },
               data: { additional_price: newOption.additional_price },
             });
           }
+          currentOptionIds.push(existingOption.id);
         } else {
           const newOpt = await prisma.option.create({
-            data: newOption,
+            data: {
+              name: newOption.name,
+              value: newOption.value,
+              additional_price: newOption.additional_price || 0,
+            },
           });
 
           await prisma.productOption.create({
@@ -246,13 +249,11 @@ const editProduct = async (req, res) => {
               option_id: newOpt.id,
             },
           });
-        }
-      });
 
-      await Promise.all(promises);
-      const currentOptionIds = newOptions.map((option) => {
-        return existingOptions.find((opt) => opt.name === option.name && opt.value === option.value)?.id;
-      });
+          currentOptionIds.push(newOpt.id);
+        }
+      }
+
       await prisma.productOption.deleteMany({
         where: {
           product_id: product.id,
@@ -264,6 +265,8 @@ const editProduct = async (req, res) => {
         },
       });
     }
+
+    // Cập nhật sản phẩm
     const updatedProduct = await prisma.product.update({
       where: { id: parseInt(id) },
       data: updateData,
