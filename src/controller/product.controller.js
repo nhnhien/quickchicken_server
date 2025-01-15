@@ -110,7 +110,8 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
   const { name, price, description, stock, category_id } = req.body;
-  const options = JSON.parse(req.body.options);
+  console.log(req.body);
+  const options = JSON.parse(req.body.options || '[]' );
 
   try {
     if (!req.file) {
@@ -177,7 +178,7 @@ const createProduct = async (req, res) => {
 const editProduct = async (req, res) => {
   const { id } = req.params;
   const { name, price, description, stock, category_id } = req.body;
-  const options = JSON.parse(req.body.options);
+  const options = JSON.parse(req.body.options || '[]'); 
 
   try {
     const product = await prisma.product.findUnique({
@@ -287,6 +288,7 @@ const editProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(id)
     const existingProduct = await prisma.product.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -297,6 +299,7 @@ const deleteProduct = async (req, res) => {
         },
       },
     });
+    console.log("🚀 ~ deleteProduct ~ existingProduct :", existingProduct )
     if (!existingProduct) {
       return res.status(404).json({
         success: false,
@@ -305,10 +308,6 @@ const deleteProduct = async (req, res) => {
     }
     const oldImagePublicId = `lotteria/${existingProduct.image.split('/').pop().split('.')[0]}`;
     await deleteFile(oldImagePublicId);
-
-    await prisma.productOption.deleteMany({
-      where: { product_id: parseInt(id) },
-    });
 
     await prisma.product.delete({
       where: { id: parseInt(id) },

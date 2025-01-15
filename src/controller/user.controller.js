@@ -27,7 +27,7 @@ const createUser = async (req, res) => {
       errors: errors.array(),
     });
   }
-  const { username, phone, email, password, roleId } = req.body;
+  const { username, phone, email, password, role_id } = req.body;
 
   try {
     const existingUser = await prisma.user.findFirst({
@@ -51,7 +51,7 @@ const createUser = async (req, res) => {
         email,
         phone,
         password: hashedPassword,
-        role_id: roleId,
+        role_id: role_id,
       },
     });
     return res.status(201).json({
@@ -76,7 +76,7 @@ const createUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { username, email, phone, roleId } = req.body;
+  const { username, email, phone, role_id } = req.body;
   const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
   if (!user) {
     return res.status(404).json({
@@ -92,7 +92,7 @@ const updateUser = async (req, res) => {
         username: username || user.username,
         email: email || user.email,
         phone: phone || user.phone,
-        roleId: roleId || user.roleId,
+        role_id: role_id || user.role_id,
       },
     });
 
@@ -104,7 +104,7 @@ const updateUser = async (req, res) => {
         username: updatedUser.username,
         email: updatedUser.email,
         phone: updatedUser.phone,
-        role: updatedUser.roleId,
+        role: updatedUser.role_id,
       },
     });
   } catch (error) {

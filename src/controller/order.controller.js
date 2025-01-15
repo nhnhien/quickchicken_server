@@ -160,7 +160,8 @@ const getOrdersByUser = async (req, res) => {
 };
 
 const createOrder = async (req, res) => {
-  const { userId, orderDetails, totalPrice, paymentMethod, note, shippingAddress } = req.body;
+  const { userId, orderDetails, totalPrice, paymentMethod, note, shippingAddress, phone_order} = req.body;
+  console.log("🚀 ~ createOrder ~ phone:", phone_order)
 
   try {
     const user = await prisma.user.findUnique({
@@ -241,6 +242,7 @@ const createOrder = async (req, res) => {
         payment_id: result.payment.id,
         delivery_status: result.delivery.status,
         delivery_id: result.delivery.id,
+        // phone_order: result.order.phone_order,
       },
     });
   } catch (error) {
