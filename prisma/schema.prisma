@@ -48,10 +48,11 @@ model Option {
   id               Int             @id @default(autoincrement())
   name             String
   value            String
-  additional_price Float?          @default(0.0)
+  additional_price Float
   productOptions   ProductOption[]
   created_at       DateTime        @default(now())
   updated_at       DateTime        @default(now()) @updatedAt
+  @@unique([name, value, additional_price], map: "unique_name_value_price")
 }
 
 model ProductOption {
@@ -106,12 +107,11 @@ model OrderDetail {
   product    Product @relation(fields: [product_id], references: [id])
 }
 
-
 model Discount {
   id               Int               @id @default(autoincrement())
   title            String
   type             String
-  discount_code             String            @unique
+  discount_code    String            @unique
   value            Float
   start_date       DateTime          @default(now())
   end_date         DateTime

@@ -194,6 +194,14 @@ const deleteDiscount = async (req, res) => {
 
 const applyDiscount = async (req, res) => {
   const { discount_code, cartItems, userId } = req.body;
+  console.log('🚀 ~ applyDiscount ~  discount_code:', discount_code);
+
+  if (!discount_code) {
+    return res.status(400).json({
+      success: false,
+      message: 'Discount code is required',
+    });
+  }
 
   try {
     const discount = await prisma.discount.findFirst({
@@ -207,10 +215,9 @@ const applyDiscount = async (req, res) => {
         userDiscounts: true,
       },
     });
-
     if (!discount) {
       return res.status(200).json({
-        success: true,
+        success: false,
         message: 'Invalid or expired discount code. Returning cart with original prices.',
         data: {
           items: cartItems,
@@ -225,7 +232,7 @@ const applyDiscount = async (req, res) => {
 
     if (validProductDiscounts.length === 0 || validUserDiscounts.length === 0) {
       return res.status(200).json({
-        success: true,
+        success: false,
         message: 'No valid products or user for this discount. Returning cart with original prices.',
         data: {
           items: cartItems,
