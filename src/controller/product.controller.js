@@ -178,11 +178,8 @@ const createProduct = async (req, res) => {
 const editProduct = async (req, res) => {
   const { id } = req.params;
   const { name, price, description, stock, category_id } = req.body;
-<<<<<<< HEAD
-  const options = JSON.parse(req.body.options || '[]'); 
-=======
+
   const options = JSON.parse(req.body.options || '[]');
->>>>>>> 561e55c0c2f773d2ecc9171985c08f1f82ce7696
 
   try {
     const product = await prisma.product.findUnique({
