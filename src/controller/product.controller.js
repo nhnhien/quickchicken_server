@@ -189,7 +189,7 @@ const editProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Sản phẩm không tồn tại',
+        message: 'Product does not exist.',
       });
     }
 
@@ -210,7 +210,7 @@ const editProduct = async (req, res) => {
       if (!imageUrl) {
         return res.status(500).json({
           success: false,
-          message: 'Tải ảnh lên Cloudinary thất bại.',
+          message: 'Uploading image to Cloudinary failed.',
         });
       }
       updateData.image = imageUrl;
@@ -272,14 +272,14 @@ const editProduct = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Cập nhật sản phẩm thành công!',
+      message: 'Product updated successfully!',
       product: updatedProduct,
     });
   } catch (error) {
-    logger.error('Lỗi khi cập nhật sản phẩm: ', error.message);
+    logger.error('Error when updating product: ', error.message);
     res.status(500).json({
       success: false,
-      message: 'Không thể cập nhật sản phẩm',
+      message: 'Cannot update product.',
       error: error.message,
     });
   }
@@ -303,7 +303,7 @@ const deleteProduct = async (req, res) => {
     if (!existingProduct) {
       return res.status(404).json({
         success: false,
-        message: 'Sản phẩm không tồn tại',
+        message: 'Product does not exist.',
       });
     }
     const oldImagePublicId = `lotteria/${existingProduct.image.split('/').pop().split('.')[0]}`;
@@ -315,13 +315,13 @@ const deleteProduct = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Sản phẩm với ID ${id} đã được xóa thành công`,
+      message: `Product with ID ${id} has been successfully deleted.`,
     });
   } catch (error) {
     logger.error('Error deleting product: ', error.message);
     res.status(500).json({
       success: false,
-      message: 'Có lỗi xảy ra khi xóa sản phẩm',
+      message: 'An error occurred while deleting the product.',
       error: error.message,
     });
   }

@@ -189,6 +189,24 @@ const createOrder = async (req, res) => {
     }
 
     const result = await prisma.$transaction(async (prisma) => {
+            // Deduct stock for each product
+            for (const detail of orderDetails) {
+              const product = products.find((p) => p.id === detail.product_id);
+      
+              if (!product) {
+                throw new Error(`Product with ID ${detail.product_id} not found`);
+              }
+      
+              if (product.stock < detail.quantity) {
+                throw new Error(`Insufficient stock for product ${product.name}`);
+              }
+      
+              // Update stock
+              await prisma.product.update({
+                where: { id: detail.product_id },
+                data: { stock: product.stock - detail.quantity },
+              });
+            }
       const order = await prisma.order.create({
         data: {
           user_id: userId,

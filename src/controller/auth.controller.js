@@ -19,11 +19,11 @@ const signIn = async (req, res) => {
       },
     });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'email hoặc password không đúng' });
+      return res.status(404).json({ success: false, message: 'email or password is incorrect.' });
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: 'email hoặc password không đúng' });
+      return res.status(401).json({ success: false, message: 'email or password is incorrect.' });
     }
     const token = generateAccessToken({ id: user.id, role: user.role_id, name: user.username });
     res.status(200).json({
